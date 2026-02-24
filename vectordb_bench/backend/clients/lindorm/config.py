@@ -1,7 +1,8 @@
-import click
-from pydantic import SecretStr, validator
+from pydantic import SecretStr
+
 from vectordb_bench.base import BaseModel
-from ..api import DBConfig, DBCaseConfig, IndexType, MetricType
+
+from ..api import DBCaseConfig, DBConfig, IndexType, MetricType
 
 
 class LindormConfig(DBConfig):
@@ -15,7 +16,7 @@ class LindormConfig(DBConfig):
 
     def to_dict(self) -> dict:
         return {
-            "hosts": [{'host': self.host, 'port': self.port}],
+            "hosts": [{"host": self.host, "port": self.port}],
             "http_auth": (self.user, self.password.get_secret_value()),
             "use_ssl": False,
             "http_compress": False,
@@ -23,7 +24,7 @@ class LindormConfig(DBConfig):
             "ssl_assert_hostname": False,
             "ssl_show_warn": False,
             "timeout": 600,
-            "index_name": self.index_name
+            "index_name": self.index_name,
         }
 
 
@@ -34,7 +35,7 @@ class LindormIndexConfig(BaseModel):
     def parse_metric(self) -> str:
         if self.metric_type == MetricType.IP:
             return "innerproduct"
-        elif self.metric_type == MetricType.COSINE:
+        if self.metric_type == MetricType.COSINE:
             return "cosinesimil"
         return "l2"
 
@@ -47,7 +48,7 @@ class HNSWConfig(LindormIndexConfig, DBCaseConfig):
     filter_type: str | None = "efficient_filter"
     k_expand_scope: int | None = 1000
 
-    def index_param(self, dim: int|None = None) -> dict:
+    def index_param(self, dim: int | None = None) -> dict:
         return {
             "engine": "lvector",
             "name": "hnswq",
@@ -55,20 +56,17 @@ class HNSWConfig(LindormIndexConfig, DBCaseConfig):
             "parameters": {
                 "m": dim if dim is not None else self.M,
                 "ef_construction": self.efConstruction,
-            }
+            },
         }
 
     def search_param(self, do_filter: bool = False) -> dict:
-        search_ext_param = {
-            "lvector": {
-                "ef_search": str(self.efSearch)
-            }
-        }
+        search_ext_param = {"lvector": {"ef_search": str(self.efSearch)}}
         if do_filter:
             search_ext_param["lvector"]["filter_type"] = self.filter_type
             if self.filter_type == "efficient_filter":
                 search_ext_param["lvector"]["k_expand_scope"] = str(self.k_expand_scope)
         return search_ext_param
+
 
 # first layer searching for cluster centroids is hnsw
 class IVFPQConfig(LindormIndexConfig, DBCaseConfig):
@@ -95,8 +93,8 @@ class IVFPQConfig(LindormIndexConfig, DBCaseConfig):
                 "centroids_use_hnsw": True,
                 "centroids_hnsw_m": self.centroids_hnsw_M,
                 "centroids_hnsw_ef_construct": self.centroids_hnsw_efConstruction,
-                "centroids_hnsw_ef_search": self.centroids_hnsw_efSearch
-            }
+                "centroids_hnsw_ef_search": self.centroids_hnsw_efSearch,
+            },
         }
 
     def search_param(self, do_filter: bool = False) -> dict:
@@ -141,8 +139,8 @@ class IVFBQConfig(LindormIndexConfig, DBCaseConfig):
                 "centroids_use_hnsw": True,
                 "centroids_hnsw_m": self.centroids_hnsw_M,
                 "centroids_hnsw_ef_construct": self.centroids_hnsw_efConstruction,
-                "centroids_hnsw_ef_search": self.centroids_hnsw_efSearch
-            }
+                "centroids_hnsw_ef_search": self.centroids_hnsw_efSearch,
+            },
         }
 
     def search_param(self, do_filter: bool = False) -> dict:
@@ -159,8 +157,5 @@ class IVFBQConfig(LindormIndexConfig, DBCaseConfig):
                 search_ext_param["lvector"]["k_expand_scope"] = str(self.k_expand_scope)
         return search_ext_param
 
-_lindorm_vector_case_config = {
-    IndexType.HNSW: HNSWConfig,
-    IndexType.IVFPQ: IVFPQConfig,
-    IndexType.IVFBQ: IVFBQConfig
-}
+
+_lindorm_vector_case_config = {IndexType.HNSW: HNSWConfig, IndexType.IVFPQ: IVFPQConfig, IndexType.IVFBQ: IVFBQConfig}

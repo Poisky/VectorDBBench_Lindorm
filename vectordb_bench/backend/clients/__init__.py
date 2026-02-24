@@ -598,6 +598,7 @@ class DB(Enum):
 
         if self == DB.Lindorm:
             from .lindorm.config import _lindorm_vector_case_config
+
             return _lindorm_vector_case_config.get(index_type)
 
         # DB.Pinecone, DB.Redis

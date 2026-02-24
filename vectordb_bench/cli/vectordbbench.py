@@ -14,6 +14,7 @@ from ..backend.clients.elastic_cloud.cli import (
 from ..backend.clients.endee.cli import Endee
 from ..backend.clients.hologres.cli import HologresHGraph
 from ..backend.clients.lancedb.cli import LanceDB
+from ..backend.clients.lindorm.cli import LindormHNSW, LindormIVFBQ, LindormIVFPQ
 from ..backend.clients.mariadb.cli import MariaDBHNSW
 from ..backend.clients.memorydb.cli import MemoryDB
 from ..backend.clients.milvus.cli import MilvusAutoIndex
@@ -35,7 +36,6 @@ from ..backend.clients.vespa.cli import Vespa
 from ..backend.clients.weaviate_cloud.cli import Weaviate
 from ..backend.clients.zilliz_cloud.cli import ZillizAutoIndex
 from ..backend.clients.zvec.cli import Zvec
-from ..backend.clients.lindorm.cli import LindormHNSW, LindormIVFPQ, LindormIVFBQ
 from .batch_cli import BatchCli
 from .cli import cli
 

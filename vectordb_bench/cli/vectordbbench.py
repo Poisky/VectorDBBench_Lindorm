@@ -24,6 +24,7 @@ from ..backend.clients.pgdiskann.cli import PgDiskAnn
 from ..backend.clients.pgvecto_rs.cli import PgVectoRSHNSW, PgVectoRSIVFFlat
 from ..backend.clients.pgvector.cli import PgVectorHNSW
 from ..backend.clients.pgvectorscale.cli import PgVectorScaleDiskAnn
+from ..backend.clients.pinecone.cli import Pinecone
 from ..backend.clients.qdrant_cloud.cli import QdrantCloud
 from ..backend.clients.qdrant_local.cli import QdrantLocal
 from ..backend.clients.redis.cli import Redis
@@ -77,6 +78,7 @@ cli.add_command(TurboPuffer)
 cli.add_command(Chroma)
 cli.add_command(Zvec)
 cli.add_command(Endee)
+cli.add_command(Pinecone)
 cli.add_command(LindormIVFPQ)
 cli.add_command(LindormHNSW)
 cli.add_command(LindormIVFBQ)

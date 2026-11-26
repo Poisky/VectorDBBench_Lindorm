@@ -1,4 +1,8 @@
 from enum import Enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..cases import CaseLabel
 
 from .api import (
     DBCaseConfig,
@@ -30,12 +34,16 @@ class DB(Enum):
     QdrantLocal = "QdrantLocal"
     WeaviateCloud = "WeaviateCloud"
     PgVector = "PgVector"
+    PolarDBPG = "PolarDBPG"
     PgVectoRS = "PgVectoRS"
     PgVectorScale = "PgVectorScale"
     PgDiskANN = "PgDiskANN"
     AlloyDB = "AlloyDB"
+    LakebaseVector = "LakebaseVector"
     Redis = "Redis"
+    Valkey = "Valkey"
     MemoryDB = "MemoryDB"
+    KiviDB = "KiviDB"
     Chroma = "Chroma"
     AWSOpenSearch = "OpenSearch"
     OSSOpenSearch = "OSSOpenSearch"
@@ -56,9 +64,24 @@ class DB(Enum):
     AliSQL = "AlibabaCloudRDSMySQL"
     Doris = "Doris"
     TurboPuffer = "TurboPuffer"
+    Turso = "Turso"
     Zvec = "Zvec"
+    Warm = "Warm"
     Endee = "Endee"
     Lindorm = "Lindorm"
+    VectorChord = "VectorChord"
+    PolarDB = "PolarDB"
+    Pinot = "Pinot"
+    SeekDB = "SeekDB"
+    VolcMySQL = "VolcMySQL"
+    Adbpg = "AnalyticDB for PostgreSQL"
+    HouyiDB = "HouyiDB"
+    Databend = "Databend"
+
+    def supports_case_label(self, label: "CaseLabel") -> bool:
+        from ..cases import CaseLabel
+
+        return self != DB.Warm or label == CaseLabel.Performance
 
     @property
     def init_cls(self) -> type[VectorDB]:  # noqa: PLR0911, PLR0912, C901, PLR0915
@@ -103,6 +126,11 @@ class DB(Enum):
 
             return PgVector
 
+        if self == DB.PolarDBPG:
+            from .polardb_pg.polardb_pg import PolarDBPgHNSW
+
+            return PolarDBPgHNSW
+
         if self == DB.PgVectoRS:
             from .pgvecto_rs.pgvecto_rs import PgVectoRS
 
@@ -123,10 +151,20 @@ class DB(Enum):
 
             return Redis
 
+        if self == DB.Valkey:
+            from .valkey.valkey import Valkey
+
+            return Valkey
+
         if self == DB.MemoryDB:
             from .memorydb.memorydb import MemoryDB
 
             return MemoryDB
+
+        if self == DB.KiviDB:
+            from .kividb.kividb import KiviDB
+
+            return KiviDB
 
         if self == DB.Chroma:
             from .chroma.chroma import ChromaClient
@@ -152,6 +190,11 @@ class DB(Enum):
             from .alloydb.alloydb import AlloyDB
 
             return AlloyDB
+
+        if self == DB.LakebaseVector:
+            from .lakebase_vector.lakebase_vector import LakebaseVector
+
+            return LakebaseVector
 
         if self == DB.AliyunElasticsearch:
             from .aliyun_elasticsearch.aliyun_elasticsearch import AliyunElasticsearch
@@ -195,6 +238,11 @@ class DB(Enum):
             from .turbopuffer.turbopuffer import TurboPuffer
 
             return TurboPuffer
+
+        if self == DB.Turso:
+            from .turso.turso import Turso
+
+            return Turso
 
         if self == DB.Test:
             from .test.test import Test
@@ -241,10 +289,54 @@ class DB(Enum):
 
             return Zvec
 
+        if self == DB.Warm:
+            from .warm.warm import Warm
+
+            return Warm
+
         if self == DB.Lindorm:
             from .lindorm.lindorm_search import LindormVector
 
             return LindormVector
+
+        if self == DB.VectorChord:
+            from .vectorchord.vectorchord import VectorChord
+
+            return VectorChord
+        if self == DB.PolarDB:
+            from .polardb.polardb import PolarDB
+
+            return PolarDB
+
+        if self == DB.Databend:
+            from .databend.databend import Databend
+
+            return Databend
+
+        if self == DB.Pinot:
+            from .pinot.pinot import Pinot
+
+            return Pinot
+
+        if self == DB.SeekDB:
+            from .seekdb.seekdb import SeekDB
+
+            return SeekDB
+
+        if self == DB.VolcMySQL:
+            from .volc_mysql.volc_mysql import VolcMySQL
+
+            return VolcMySQL
+
+        if self == DB.Adbpg:
+            from .adbpg.adbpg import Adbpg
+
+            return Adbpg
+
+        if self == DB.HouyiDB:
+            from .houyidb.houyidb import HouyiDB
+
+            return HouyiDB
 
         msg = f"Unknown DB: {self.name}"
         raise ValueError(msg)
@@ -292,6 +384,11 @@ class DB(Enum):
 
             return PgVectorConfig
 
+        if self == DB.PolarDBPG:
+            from .polardb_pg.config import PolarDBPgConfig
+
+            return PolarDBPgConfig
+
         if self == DB.PgVectoRS:
             from .pgvecto_rs.config import PgVectoRSConfig
 
@@ -312,10 +409,20 @@ class DB(Enum):
 
             return RedisConfig
 
+        if self == DB.Valkey:
+            from .valkey.config import ValkeyConfig
+
+            return ValkeyConfig
+
         if self == DB.MemoryDB:
             from .memorydb.config import MemoryDBConfig
 
             return MemoryDBConfig
+
+        if self == DB.KiviDB:
+            from .kividb.config import KiviDBConfig
+
+            return KiviDBConfig
 
         if self == DB.Chroma:
             from .chroma.config import ChromaConfig
@@ -341,6 +448,11 @@ class DB(Enum):
             from .alloydb.config import AlloyDBConfig
 
             return AlloyDBConfig
+
+        if self == DB.LakebaseVector:
+            from .lakebase_vector.config import LakebaseVectorConfig
+
+            return LakebaseVectorConfig
 
         if self == DB.AliyunElasticsearch:
             from .aliyun_elasticsearch.config import AliyunElasticsearchConfig
@@ -384,6 +496,11 @@ class DB(Enum):
             from .turbopuffer.config import TurboPufferConfig
 
             return TurboPufferConfig
+
+        if self == DB.Turso:
+            from .turso.config import TursoConfig
+
+            return TursoConfig
 
         if self == DB.Test:
             from .test.config import TestConfig
@@ -430,10 +547,54 @@ class DB(Enum):
 
             return ZvecConfig
 
+        if self == DB.Warm:
+            from .warm.config import WarmConfig
+
+            return WarmConfig
+
         if self == DB.Lindorm:
             from .lindorm.config import LindormConfig
 
             return LindormConfig
+
+        if self == DB.VectorChord:
+            from .vectorchord.config import VectorChordConfig
+
+            return VectorChordConfig
+        if self == DB.PolarDB:
+            from .polardb.config import PolarDBConfig
+
+            return PolarDBConfig
+
+        if self == DB.Pinot:
+            from .pinot.config import PinotConfig
+
+            return PinotConfig
+
+        if self == DB.SeekDB:
+            from .seekdb.config import SeekDBConfig
+
+            return SeekDBConfig
+
+        if self == DB.VolcMySQL:
+            from .volc_mysql.config import VolcMySQLConfig
+
+            return VolcMySQLConfig
+
+        if self == DB.Adbpg:
+            from .adbpg.config import AdbpgConfig
+
+            return AdbpgConfig
+
+        if self == DB.HouyiDB:
+            from .houyidb.config import HouyiDBConfig
+
+            return HouyiDBConfig
+
+        if self == DB.Databend:
+            from .databend.config import DatabendConfig
+
+            return DatabendConfig
 
         msg = f"Unknown DB: {self.name}"
         raise ValueError(msg)
@@ -448,11 +609,19 @@ class DB(Enum):
             return _milvus_case_config.get(index_type)
 
         if self == DB.ZillizCloud:
+            if index_type == IndexType.FTS:
+                from .zilliz_cloud.config import ZillizCloudFtsConfig
+
+                return ZillizCloudFtsConfig
             from .zilliz_cloud.config import AutoIndexConfig
 
             return AutoIndexConfig
 
         if self == DB.ElasticCloud:
+            if index_type == IndexType.FTS:
+                from .elastic_cloud.config import ElasticCloudFtsConfig
+
+                return ElasticCloudFtsConfig
             from .elastic_cloud.config import ElasticCloudIndexConfig
 
             return ElasticCloudIndexConfig
@@ -477,6 +646,11 @@ class DB(Enum):
 
             return _pgvector_case_config.get(index_type)
 
+        if self == DB.PolarDBPG:
+            from .polardb_pg.config import _polardb_pg_case_config
+
+            return _polardb_pg_case_config.get(index_type)
+
         if self == DB.PgVectoRS:
             from .pgvecto_rs.config import _pgvecto_rs_case_config
 
@@ -488,6 +662,10 @@ class DB(Enum):
             return AWSOpenSearchIndexConfig
 
         if self == DB.OSSOpenSearch:
+            if index_type == IndexType.FTS:
+                from .oss_opensearch.config import OSSOpenSearchFtsConfig
+
+                return OSSOpenSearchFtsConfig
             from .oss_opensearch.config import OSSOpenSearchIndexConfig
 
             return OSSOpenSearchIndexConfig
@@ -511,6 +689,11 @@ class DB(Enum):
             from .alloydb.config import _alloydb_case_config
 
             return _alloydb_case_config.get(index_type)
+
+        if self == DB.LakebaseVector:
+            from .lakebase_vector.config import _lakebase_search_case_config
+
+            return _lakebase_search_case_config.get(index_type)
 
         if self == DB.AliyunElasticsearch:
             from .elastic_cloud.config import ElasticCloudIndexConfig
@@ -548,6 +731,10 @@ class DB(Enum):
             return _cockroachdb_case_config.get(index_type)
 
         if self == DB.Vespa:
+            if index_type == IndexType.FTS:
+                from .vespa.config import VespaFtsConfig
+
+                return VespaFtsConfig
             from .vespa.config import VespaHNSWConfig
 
             return VespaHNSWConfig
@@ -567,9 +754,16 @@ class DB(Enum):
             return HologresIndexConfig
 
         if self == DB.Zvec:
-            from .zvec.config import ZvecHNSWIndexConfig
+            from .zvec.config import ZvecDiskANNIndexConfig, ZvecHNSWIndexConfig
 
+            if index_type == IndexType.DISKANN:
+                return ZvecDiskANNIndexConfig
             return ZvecHNSWIndexConfig
+
+        if self == DB.Warm:
+            from .warm.config import WarmIndexConfig
+
+            return WarmIndexConfig
 
         if self == DB.TencentElasticsearch:
             from .tencent_elasticsearch.config import TencentElasticsearchIndexConfig
@@ -581,15 +775,29 @@ class DB(Enum):
 
             return AliSQLIndexConfig
 
+        if self == DB.PolarDB:
+            from .polardb.config import _polardb_case_config
+
+            return _polardb_case_config.get(index_type)
+
         if self == DB.Doris:
             from .doris.config import DorisCaseConfig
 
             return DorisCaseConfig
 
         if self == DB.TurboPuffer:
+            if index_type == IndexType.FTS:
+                from .turbopuffer.config import TurboPufferFtsConfig
+
+                return TurboPufferFtsConfig
             from .turbopuffer.config import TurboPufferIndexConfig
 
             return TurboPufferIndexConfig
+
+        if self == DB.Turso:
+            from .turso.config import TursoIndexConfig
+
+            return TursoIndexConfig
 
         if self == DB.Chroma:
             from .chroma.config import ChromaIndexConfig
@@ -600,6 +808,55 @@ class DB(Enum):
             from .lindorm.config import _lindorm_vector_case_config
 
             return _lindorm_vector_case_config.get(index_type)
+
+        if self == DB.VectorChord:
+            from .vectorchord.config import _vectorchord_case_config
+
+            return _vectorchord_case_config.get(index_type)
+
+        if self == DB.Pinot:
+            from .pinot.config import PinotHNSWConfig, PinotIVFFlatConfig, PinotIVFPQConfig
+
+            return {
+                IndexType.HNSW: PinotHNSWConfig,
+                IndexType.IVFFlat: PinotIVFFlatConfig,
+                IndexType.IVFPQ: PinotIVFPQConfig,
+            }.get(index_type, PinotHNSWConfig)
+
+        if self == DB.SeekDB:
+            from .seekdb.config import _seekdb_case_config
+
+            return _seekdb_case_config.get(index_type)
+
+        if self == DB.VolcMySQL:
+            from .volc_mysql.config import _volcmysql_case_config
+
+            return _volcmysql_case_config.get(index_type)
+
+        if self == DB.Adbpg:
+            from .adbpg.config import AdbpgIndexConfig
+
+            return AdbpgIndexConfig
+
+        if self == DB.Valkey:
+            from .valkey.config import ValkeyHNSWConfig
+
+            return ValkeyHNSWConfig
+
+        if self == DB.KiviDB:
+            from .kividb.config import KiviDBHNSWConfig, _kividb_case_config
+
+            return _kividb_case_config.get(index_type, KiviDBHNSWConfig)
+
+        if self == DB.HouyiDB:
+            from .houyidb.config import HouyiDBIndexConfig
+
+            return HouyiDBIndexConfig
+
+        if self == DB.Databend:
+            from .databend.config import DatabendIndexConfig
+
+            return DatabendIndexConfig
 
         # DB.Pinecone, DB.Redis
         return EmptyDBCaseConfig

@@ -11,19 +11,18 @@ def dbConfigSettings(st, activedDbList: list[DB]):
     isAllValid = True
     for activeDb in activedDbList:
         dbConfigSettingItemContainer = expander.container()
-        dbConfig = dbConfigSettingItem(dbConfigSettingItemContainer, activeDb)
         try:
+            dbConfig = dbConfigSettingItem(dbConfigSettingItemContainer, activeDb)
             dbConfigs[activeDb] = activeDb.config_cls(**dbConfig)
+            # Probe client module so missing optional deps surface now, not on Run.
+            _ = activeDb.init_cls
+        except ModuleNotFoundError as e:
+            isAllValid = False
+            dbConfigSettingItemContainer.error(f"{activeDb.value} needs `{e.name}` but it is not installed.")
         except ValidationError as e:
             isAllValid = False
-            errTexts = []
-            for err in e.raw_errors:
-                errLocs = err.loc_tuple()
-                errInfo = err.exc
-                errText = f"{', '.join(errLocs)} - {errInfo}"
-                errTexts.append(errText)
-
-            dbConfigSettingItemContainer.error(f"{'; '.join(errTexts)}")
+            errTexts = [f"{', '.join(str(x) for x in err['loc'])} - {err['msg']}" for err in e.errors()]
+            dbConfigSettingItemContainer.error("; ".join(errTexts))
 
     return dbConfigs, isAllValid
 
@@ -42,15 +41,22 @@ def dbConfigSettingItem(st, activeDb: DB):
     dbConfig = {}
     idx = 0
 
+    ui_hidden = set(getattr(dbConfigClass, "ui_hidden_configs", lambda: [])())
+
     # db config (unique)
     for key, property in property_items:
+        if key in ui_hidden:
+            continue
         if key not in dbConfigClass.common_short_configs() and key not in dbConfigClass.common_long_configs():
             column = columns[idx % DB_CONFIG_SETTING_COLUMNS]
             idx += 1
+            default_value = property.get("default", "")
+            if default_value is None:
+                default_value = ""
             input_value = column.text_input(
                 key,
                 key=f"{activeDb.name}-{key}",
-                value=property.get("default", ""),
+                value=default_value,
                 type="password" if inputIsPassword(key) else "default",
                 placeholder="optional" if key not in required_fields else None,
             )

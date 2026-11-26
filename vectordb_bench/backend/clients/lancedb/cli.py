@@ -1,4 +1,4 @@
-from typing import Annotated, Unpack
+from typing import Annotated, TypedDict, Unpack
 
 import click
 from pydantic import SecretStr
@@ -22,50 +22,131 @@ class LanceDBTypedDict(CommonTypedDict):
         str | None,
         click.option("--token", type=str, help="Authentication token", required=False),
     ]
+    cos_secret_id: Annotated[
+        str | None,
+        click.option(
+            "--cos-secret-id",
+            type=str,
+            help="Tencent COS secret ID (or set COS_SECRET_ID env var)",
+            required=False,
+        ),
+    ]
+    cos_secret_key: Annotated[
+        str | None,
+        click.option(
+            "--cos-secret-key",
+            type=str,
+            help="Tencent COS secret key (or set COS_SECRET_KEY env var)",
+            required=False,
+        ),
+    ]
+    cos_endpoint: Annotated[
+        str | None,
+        click.option(
+            "--cos-endpoint",
+            type=str,
+            help="Tencent COS endpoint (or set COS_ENDPOINT env var)",
+            required=False,
+        ),
+    ]
+    cos_region: Annotated[
+        str | None,
+        click.option(
+            "--cos-region",
+            type=str,
+            help="Tencent COS region (or set TENCENTCLOUD_REGION env var)",
+            required=False,
+        ),
+    ]
+
+
+class LanceDBScalarTypedDict(TypedDict):
+    scalar_index: Annotated[
+        str,
+        click.option(
+            "--scalar-index",
+            type=click.Choice(["NONE", "BTREE"]),
+            default="NONE",
+            help="Optional scalar B-tree built in addition to the vector index",
+            show_default=True,
+        ),
+    ]
+    scalar_column: Annotated[
+        str,
+        click.option(
+            "--scalar-column",
+            type=click.Choice(["id", "label"]),
+            default="id",
+            help="Column for the scalar B-tree. Label-filter cases predicate on label; range filters predicate on id",
+            show_default=True,
+        ),
+    ]
+
+
+class LanceDBWithScalarTypedDict(LanceDBTypedDict, LanceDBScalarTypedDict):
+    pass
+
+
+def _scalar_case_kwargs(parameters: dict) -> dict:
+    return {
+        "scalar_index": parameters.get("scalar_index", "NONE"),
+        "scalar_column": parameters.get("scalar_column", "id"),
+    }
+
+
+def _build_db_config(**parameters):
+    from .config import LanceDBConfig, build_lancedb_storage_options
+
+    uri = parameters["uri"]
+    return LanceDBConfig(
+        db_label=parameters["db_label"],
+        uri=uri,
+        token=SecretStr(parameters["token"]) if parameters.get("token") else None,
+        storage_options=build_lancedb_storage_options(
+            uri,
+            cos_secret_id=parameters.get("cos_secret_id"),
+            cos_secret_key=parameters.get("cos_secret_key"),
+            cos_endpoint=parameters.get("cos_endpoint"),
+            cos_region=parameters.get("cos_region"),
+        ),
+    )
 
 
 @cli.command()
-@click_parameter_decorators_from_typed_dict(LanceDBTypedDict)
-def LanceDB(**parameters: Unpack[LanceDBTypedDict]):
-    from .config import LanceDBConfig, _lancedb_case_config
+@click_parameter_decorators_from_typed_dict(LanceDBWithScalarTypedDict)
+def LanceDB(**parameters: Unpack[LanceDBWithScalarTypedDict]):
+    from .config import LanceDBNoIndexConfig
 
     run(
         db=DB.LanceDB,
-        db_config=LanceDBConfig(
-            db_label=parameters["db_label"],
-            uri=parameters["uri"],
-            token=SecretStr(parameters["token"]) if parameters.get("token") else None,
-        ),
-        db_case_config=_lancedb_case_config.get("NONE")(),
+        db_config=_build_db_config(**parameters),
+        db_case_config=LanceDBNoIndexConfig(**_scalar_case_kwargs(parameters)),
         **parameters,
     )
 
 
 @cli.command()
-@click_parameter_decorators_from_typed_dict(LanceDBTypedDict)
-def LanceDBAutoIndex(**parameters: Unpack[LanceDBTypedDict]):
-    from .config import LanceDBConfig, _lancedb_case_config
+@click_parameter_decorators_from_typed_dict(LanceDBWithScalarTypedDict)
+def LanceDBAutoIndex(**parameters: Unpack[LanceDBWithScalarTypedDict]):
+    from .config import LanceDBAutoIndexConfig
 
     run(
         db=DB.LanceDB,
-        db_config=LanceDBConfig(
-            db_label=parameters["db_label"],
-            uri=parameters["uri"],
-            token=SecretStr(parameters["token"]) if parameters.get("token") else None,
-        ),
-        db_case_config=_lancedb_case_config.get(IndexType.AUTOINDEX)(),
+        db_config=_build_db_config(**parameters),
+        db_case_config=LanceDBAutoIndexConfig(**_scalar_case_kwargs(parameters)),
         **parameters,
     )
 
 
-class LanceDBIVFPQTypedDict(CommonTypedDict, LanceDBTypedDict):
+class LanceDBIVFPQTypedDict(CommonTypedDict, LanceDBTypedDict, LanceDBScalarTypedDict):
     num_partitions: Annotated[
         int,
         click.option(
             "--num-partitions",
             type=int,
             default=0,
-            help="Number of partitions for IVFPQ index, unset = use LanceDB default",
+            help="Number of partitions for IVF_PQ index, 0 = use LanceDB default",
+            show_default=True,
         ),
     ]
     num_sub_vectors: Annotated[
@@ -74,7 +155,8 @@ class LanceDBIVFPQTypedDict(CommonTypedDict, LanceDBTypedDict):
             "--num-sub-vectors",
             type=int,
             default=0,
-            help="Number of sub-vectors for IVFPQ index, unset = use LanceDB default",
+            help="Number of sub-vectors for IVF_PQ index, 0 = use LanceDB default",
+            show_default=True,
         ),
     ]
     nbits: Annotated[
@@ -83,13 +165,28 @@ class LanceDBIVFPQTypedDict(CommonTypedDict, LanceDBTypedDict):
             "--nbits",
             type=int,
             default=8,
-            help="Number of bits for IVFPQ index (must be 4 or 8), unset = use LanceDB default",
+            help="Number of bits for quantization (4 or 8)",
+            show_default=True,
         ),
     ]
     nprobes: Annotated[
         int,
         click.option(
-            "--nprobes", type=int, default=0, help="Number of probes for IVFPQ search, unset = use LanceDB default"
+            "--nprobes",
+            type=int,
+            default=0,
+            help="Number of probes for IVF search, 0 = use LanceDB default",
+            show_default=True,
+        ),
+    ]
+    refine_factor: Annotated[
+        int,
+        click.option(
+            "--refine-factor",
+            type=int,
+            default=0,
+            help="Refine factor for better recall, 0 = disabled",
+            show_default=True,
         ),
     ]
 
@@ -97,50 +194,305 @@ class LanceDBIVFPQTypedDict(CommonTypedDict, LanceDBTypedDict):
 @cli.command()
 @click_parameter_decorators_from_typed_dict(LanceDBIVFPQTypedDict)
 def LanceDBIVFPQ(**parameters: Unpack[LanceDBIVFPQTypedDict]):
-    from .config import LanceDBConfig, LanceDBIndexConfig
+    from .config import LanceDBIndexConfig
 
     run(
         db=DB.LanceDB,
-        db_config=LanceDBConfig(
-            db_label=parameters["db_label"],
-            uri=parameters["uri"],
-            token=SecretStr(parameters["token"]) if parameters.get("token") else None,
-        ),
+        db_config=_build_db_config(**parameters),
         db_case_config=LanceDBIndexConfig(
             index=IndexType.IVFPQ,
             num_partitions=parameters["num_partitions"],
             num_sub_vectors=parameters["num_sub_vectors"],
             nbits=parameters["nbits"],
             nprobes=parameters["nprobes"],
+            refine_factor=parameters["refine_factor"],
+            **_scalar_case_kwargs(parameters),
         ),
         **parameters,
     )
 
 
-class LanceDBHNSWTypedDict(CommonTypedDict, LanceDBTypedDict):
-    m: Annotated[int, click.option("--m", type=int, default=0, help="HNSW parameter m")]
-    ef_construction: Annotated[
-        int, click.option("--ef-construction", type=int, default=0, help="HNSW parameter ef_construction")
+class LanceDBIVFTypedDict(CommonTypedDict, LanceDBTypedDict, LanceDBScalarTypedDict):
+    num_partitions: Annotated[
+        int,
+        click.option(
+            "--num-partitions",
+            type=int,
+            default=0,
+            help="Number of IVF partitions, 0 = use LanceDB default",
+            show_default=True,
+        ),
     ]
-    ef: Annotated[int, click.option("--ef", type=int, default=0, help="HNSW search parameter ef")]
+    nprobes: Annotated[
+        int,
+        click.option(
+            "--nprobes",
+            type=int,
+            default=0,
+            help="Number of probes for IVF search, 0 = use LanceDB default",
+            show_default=True,
+        ),
+    ]
+    refine_factor: Annotated[
+        int,
+        click.option(
+            "--refine-factor",
+            type=int,
+            default=0,
+            help="Refine factor for better recall, 0 = disabled",
+            show_default=True,
+        ),
+    ]
 
 
 @cli.command()
-@click_parameter_decorators_from_typed_dict(LanceDBHNSWTypedDict)
-def LanceDBHNSW(**parameters: Unpack[LanceDBHNSWTypedDict]):
-    from .config import LanceDBConfig, LanceDBHNSWIndexConfig
+@click_parameter_decorators_from_typed_dict(LanceDBIVFTypedDict)
+def LanceDBIVFFlat(**parameters: Unpack[LanceDBIVFTypedDict]):
+    from .config import LanceDBIVFFlatConfig
 
     run(
         db=DB.LanceDB,
-        db_config=LanceDBConfig(
-            db_label=parameters["db_label"],
-            uri=parameters["uri"],
-            token=SecretStr(parameters["token"]) if parameters.get("token") else None,
+        db_config=_build_db_config(**parameters),
+        db_case_config=LanceDBIVFFlatConfig(
+            num_partitions=parameters["num_partitions"],
+            nprobes=parameters["nprobes"],
+            refine_factor=parameters["refine_factor"],
+            **_scalar_case_kwargs(parameters),
         ),
-        db_case_config=LanceDBHNSWIndexConfig(
+        **parameters,
+    )
+
+
+@cli.command()
+@click_parameter_decorators_from_typed_dict(LanceDBIVFTypedDict)
+def LanceDBIVFSQ(**parameters: Unpack[LanceDBIVFTypedDict]):
+    from .config import LanceDBIVFSQConfig
+
+    run(
+        db=DB.LanceDB,
+        db_config=_build_db_config(**parameters),
+        db_case_config=LanceDBIVFSQConfig(
+            num_partitions=parameters["num_partitions"],
+            nprobes=parameters["nprobes"],
+            refine_factor=parameters["refine_factor"],
+            **_scalar_case_kwargs(parameters),
+        ),
+        **parameters,
+    )
+
+
+class LanceDBIVFRQTypedDict(LanceDBIVFTypedDict):
+    nbits: Annotated[
+        int,
+        click.option(
+            "--nbits",
+            type=int,
+            default=1,
+            help="RabitQ bits per dimension (Lance default: 1)",
+            show_default=True,
+        ),
+    ]
+
+
+@cli.command()
+@click_parameter_decorators_from_typed_dict(LanceDBIVFRQTypedDict)
+def LanceDBIVFRQ(**parameters: Unpack[LanceDBIVFRQTypedDict]):
+    from .config import LanceDBIVFRQConfig
+
+    run(
+        db=DB.LanceDB,
+        db_config=_build_db_config(**parameters),
+        db_case_config=LanceDBIVFRQConfig(
+            num_partitions=parameters["num_partitions"],
+            nbits=parameters["nbits"],
+            nprobes=parameters["nprobes"],
+            refine_factor=parameters["refine_factor"],
+            **_scalar_case_kwargs(parameters),
+        ),
+        **parameters,
+    )
+
+
+class LanceDBIVFHNSWSQTypedDict(CommonTypedDict, LanceDBTypedDict, LanceDBScalarTypedDict):
+    num_partitions: Annotated[
+        int,
+        click.option(
+            "--num-partitions",
+            type=int,
+            default=0,
+            help="Number of IVF partitions, 0 = use LanceDB default",
+            show_default=True,
+        ),
+    ]
+    m: Annotated[
+        int,
+        click.option("--m", type=int, default=0, help="HNSW parameter m, 0 = use LanceDB default", show_default=True),
+    ]
+    ef_construction: Annotated[
+        int,
+        click.option(
+            "--ef-construction",
+            type=int,
+            default=0,
+            help="HNSW ef_construction, 0 = use LanceDB default",
+            show_default=True,
+        ),
+    ]
+    ef: Annotated[
+        int,
+        click.option("--ef", type=int, default=0, help="HNSW search ef, 0 = use LanceDB default", show_default=True),
+    ]
+    nprobes: Annotated[
+        int,
+        click.option(
+            "--nprobes",
+            type=int,
+            default=0,
+            help="Number of probes for IVF search, 0 = use LanceDB default",
+            show_default=True,
+        ),
+    ]
+    refine_factor: Annotated[
+        int,
+        click.option(
+            "--refine-factor",
+            type=int,
+            default=0,
+            help="Refine factor for better recall, 0 = disabled",
+            show_default=True,
+        ),
+    ]
+
+
+@cli.command()
+@click_parameter_decorators_from_typed_dict(LanceDBIVFHNSWSQTypedDict)
+def LanceDBIVFHNSWSQ(**parameters: Unpack[LanceDBIVFHNSWSQTypedDict]):
+    from .config import LanceDBIVFHNSWSQConfig
+
+    run(
+        db=DB.LanceDB,
+        db_config=_build_db_config(**parameters),
+        db_case_config=LanceDBIVFHNSWSQConfig(
+            num_partitions=parameters["num_partitions"],
             m=parameters["m"],
             ef_construction=parameters["ef_construction"],
             ef=parameters["ef"],
+            nprobes=parameters["nprobes"],
+            refine_factor=parameters["refine_factor"],
+            **_scalar_case_kwargs(parameters),
+        ),
+        **parameters,
+    )
+
+
+class LanceDBIVFHNSWPQTypedDict(CommonTypedDict, LanceDBTypedDict, LanceDBScalarTypedDict):
+    num_partitions: Annotated[
+        int,
+        click.option(
+            "--num-partitions",
+            type=int,
+            default=0,
+            help="Number of IVF partitions, 0 = use LanceDB default",
+            show_default=True,
+        ),
+    ]
+    num_sub_vectors: Annotated[
+        int,
+        click.option(
+            "--num-sub-vectors",
+            type=int,
+            default=0,
+            help="Number of PQ sub-vectors, 0 = use LanceDB default",
+            show_default=True,
+        ),
+    ]
+    m: Annotated[
+        int,
+        click.option("--m", type=int, default=0, help="HNSW parameter m, 0 = use LanceDB default", show_default=True),
+    ]
+    ef_construction: Annotated[
+        int,
+        click.option(
+            "--ef-construction",
+            type=int,
+            default=0,
+            help="HNSW ef_construction, 0 = use LanceDB default",
+            show_default=True,
+        ),
+    ]
+    ef: Annotated[
+        int,
+        click.option("--ef", type=int, default=0, help="HNSW search ef, 0 = use LanceDB default", show_default=True),
+    ]
+    nprobes: Annotated[
+        int,
+        click.option(
+            "--nprobes",
+            type=int,
+            default=0,
+            help="Number of probes for IVF search, 0 = use LanceDB default",
+            show_default=True,
+        ),
+    ]
+    refine_factor: Annotated[
+        int,
+        click.option(
+            "--refine-factor",
+            type=int,
+            default=0,
+            help="Refine factor for better recall, 0 = disabled",
+            show_default=True,
+        ),
+    ]
+
+
+@cli.command()
+@click_parameter_decorators_from_typed_dict(LanceDBIVFHNSWPQTypedDict)
+def LanceDBIVFHNSWPQ(**parameters: Unpack[LanceDBIVFHNSWPQTypedDict]):
+    from .config import LanceDBIVFHNSWPQConfig
+
+    run(
+        db=DB.LanceDB,
+        db_config=_build_db_config(**parameters),
+        db_case_config=LanceDBIVFHNSWPQConfig(
+            num_partitions=parameters["num_partitions"],
+            num_sub_vectors=parameters["num_sub_vectors"],
+            m=parameters["m"],
+            ef_construction=parameters["ef_construction"],
+            ef=parameters["ef"],
+            nprobes=parameters["nprobes"],
+            refine_factor=parameters["refine_factor"],
+            **_scalar_case_kwargs(parameters),
+        ),
+        **parameters,
+    )
+
+
+class LanceDBBTreeTypedDict(CommonTypedDict, LanceDBTypedDict):
+    column: Annotated[
+        str,
+        click.option(
+            "--column",
+            type=click.Choice(["id", "label"]),
+            default="id",
+            help="Scalar column for a B-tree with no vector index. Label-filter cases use label",
+            show_default=True,
+        ),
+    ]
+
+
+@cli.command()
+@click_parameter_decorators_from_typed_dict(LanceDBBTreeTypedDict)
+def LanceDBBTree(**parameters: Unpack[LanceDBBTreeTypedDict]):
+    from .config import LanceDBBTreeConfig
+
+    run(
+        db=DB.LanceDB,
+        db_config=_build_db_config(**parameters),
+        db_case_config=LanceDBBTreeConfig(
+            column=parameters["column"],
+            scalar_index=IndexType.BTREE,
+            scalar_column=parameters["column"],
         ),
         **parameters,
     )

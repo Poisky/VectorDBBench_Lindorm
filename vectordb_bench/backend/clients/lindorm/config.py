@@ -43,11 +43,12 @@ class LindormIndexConfig(BaseModel):
 
 class HNSWConfig(LindormIndexConfig, DBCaseConfig):
     index: IndexType = IndexType.HNSW
-    M: int | None
-    efConstruction: int | None
-    efSearch: int | None
+    M: int | None = None
+    efConstruction: int | None = None
+    efSearch: int | None = None
     filter_type: str | None = "efficient_filter"
     k_expand_scope: int | None = 1000
+    reorder_factor: int | None = 2
 
     def index_param(self, dim: int | None = None) -> dict:
         return {
@@ -61,7 +62,7 @@ class HNSWConfig(LindormIndexConfig, DBCaseConfig):
         }
 
     def search_param(self, do_filter: bool = False) -> dict:
-        search_ext_param = {"lvector": {"ef_search": str(self.efSearch)}}
+        search_ext_param = {"lvector": {"ef_search": str(self.efSearch), "reorder_factor": str(self.reorder_factor)}}
         if do_filter:
             search_ext_param["lvector"]["filter_type"] = self.filter_type
             if self.filter_type == "efficient_filter":
@@ -72,15 +73,15 @@ class HNSWConfig(LindormIndexConfig, DBCaseConfig):
 # first layer searching for cluster centroids is hnsw
 class IVFPQConfig(LindormIndexConfig, DBCaseConfig):
     index: IndexType = IndexType.IVFPQ
-    nlist: int | None
-    nprobe: int | None
+    nlist: int | None = None
+    nprobe: int | None = None
     # search parameters
-    centroids_hnsw_M: int | None
-    centroids_hnsw_efConstruction: int | None
-    centroids_hnsw_efSearch: int | None
+    centroids_hnsw_M: int | None = None
+    centroids_hnsw_efConstruction: int | None = None
+    centroids_hnsw_efSearch: int | None = None
     filter_type: str | None = "efficient_filter"
 
-    reorder_factor: int | None = 10
+    reorder_factor: int | None = 2
     client_refactor: bool = False
     k_expand_scope: int | None = 1000
 
@@ -116,16 +117,16 @@ class IVFPQConfig(LindormIndexConfig, DBCaseConfig):
 
 class IVFBQConfig(LindormIndexConfig, DBCaseConfig):
     index: IndexType = IndexType.IVFBQ
-    nlist: int | None
-    exbits: int | None
-    nprobe: int | None
+    nlist: int | None = None
+    exbits: int | None = None
+    nprobe: int | None = None
     # search parameters
-    centroids_hnsw_M: int | None
-    centroids_hnsw_efConstruction: int | None
-    centroids_hnsw_efSearch: int | None
+    centroids_hnsw_M: int | None = None
+    centroids_hnsw_efConstruction: int | None = None
+    centroids_hnsw_efSearch: int | None = None
     filter_type: str | None = "efficient_filter"
 
-    reorder_factor: int | None = 10
+    reorder_factor: int | None = 2
     client_refactor: bool = False
     k_expand_scope: int | None = 1000
 
